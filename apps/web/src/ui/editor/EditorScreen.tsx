@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { EditorView } from '@codemirror/view';
 import { ArrowLeft, BookOpen, PenLine } from 'lucide-react';
 import { extractLinkIds, type TabletId } from '@pangaea/core';
@@ -22,6 +22,8 @@ import { cn } from '../lib/cn';
  */
 export function EditorScreen() {
   const { id } = useParams<{ id: TabletId }>();
+  const [searchParams] = useSearchParams();
+  const isFtue = searchParams.get('ftue') === '1';
   const navigate = useNavigate();
   const tablet = useTabletStore((s) => (id ? s.tablets.get(id) : undefined));
   const show = useToastStore((s) => s.show);
@@ -33,6 +35,8 @@ export function EditorScreen() {
   const [dirty, setDirty] = useState(false);
   // 렌더에서 참조 가능한 EditorView (FloatingToolbar 전달용)
   const [view, setView] = useState<EditorView | null>(null);
+  // FTUE: 본문 줄 수 (3줄 이상이면 "저장하고 대륙 보기" 활성화)
+  const [lineCount, setLineCount] = useState(0);
 
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -90,6 +94,7 @@ export function EditorScreen() {
           bodyRef.current = doc;
           dirtyRef.current = true;
           setDirty(true);
+          setLineCount(doc.split('\n').filter((l) => l.trim()).length);
           // draft는 1초 디바운스로 기록 (크래시 안전망)
           window.clearTimeout(draftTimer.current);
           draftTimer.current = window.setTimeout(() => void writeDraft(id, doc), 1000);
@@ -223,6 +228,28 @@ export function EditorScreen() {
           />
         )}
       </div>
+
+      {/* 온보딩 가이드 오버레이 (M1-E2) */}
+      {isFtue && (
+        <div className="pointer-events-none absolute inset-x-0 top-24 z-20 flex justify-center px-4">
+          <div className="glass-panel pointer-events-auto rounded-xl px-4 py-3 text-center">
+            <p className="text-sm text-text-1">아무거나 적어보세요 ✎</p>
+            <p className="mt-0.5 text-xs text-text-2">
+              3줄 이상 쓰면 첫 섬이 솟아오릅니다
+            </p>
+            {dirty && lineCount >= 3 && (
+                <button
+                  className="spring mt-2 rounded-lg bg-accent/90 px-4 py-1.5 text-xs font-medium text-[#3a2e10] transition-transform hover:scale-105"
+                  onClick={() => {
+                    void save().then(() => navigate('/', { replace: true }));
+                  }}
+                >
+                  저장하고 대륙 보기 🏝
+                </button>
+              )}
+          </div>
+        </div>
+      )}
 
       <input
         ref={fileInputRef}

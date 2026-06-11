@@ -40,14 +40,30 @@ function topFace(cam: Camera, b: SceneBlock, lift: number) {
   ] as const;
 }
 
+export interface RevealState {
+  landId: string;
+  /** 0(바닷속) → 1(완전 등장) */
+  t: number;
+}
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
 export function drawScene(
   ctx: CanvasRenderingContext2D,
   scene: Scene,
   cam: Camera,
-  opts: { hour: number; selectedId: string | null; hoveredId: string | null },
+  opts: {
+    hour: number;
+    selectedId: string | null;
+    hoveredId: string | null;
+    reveal?: RevealState | null;
+  },
 ): void {
   const env = timeEnv(opts.hour);
   const detailed = cam.zoom >= 0.7; // LOD: 0.7x 미만 = 색 덩어리 (M1-C8)
+  const revealEase = opts.reveal ? easeOutCubic(opts.reveal.t) : 1;
 
   // 섬 테두리선 (반투명)
   for (const island of scene.islands) {
@@ -71,9 +87,14 @@ export function drawScene(
 
   // 블록 (depth 순 정렬 가정 — 화가 알고리즘)
   for (const b of scene.blocks) {
+    // 섬 등장 연출 (M1-E3): 해당 토지 블록이 바다에서 솟아오름
+    const revealing = opts.reveal && b.landId === opts.reveal.landId;
+    if (revealing) ctx.globalAlpha = revealEase;
+    const heightScale = revealing ? revealEase : 1;
+
     const top = activityColor(b.activity, env.nightness);
     const side = sideColor(top);
-    const faceTop = topFace(cam, b, b.h);
+    const faceTop = topFace(cam, b, b.h * heightScale);
     const faceBottom = topFace(cam, b, 0);
 
     // 그림자 (M1-C7 — 태양 위치 기반)
@@ -141,6 +162,23 @@ export function drawScene(
       ctx.lineWidth = Math.max(1.5, 1.5 * cam.zoom);
       ctx.stroke();
       ctx.restore();
+    }
+
+    if (revealing) ctx.globalAlpha = 1;
+  }
+
+  // 안개 걷힘 (M1-E3): 등장 중인 섬 위에 흰 안개가 옅어진다
+  if (opts.reveal) {
+    const island = scene.islands.find((i) => i.landId === opts.reveal!.landId);
+    if (island && revealEase < 1) {
+      const center = toScreen(cam, island.x + island.width / 2, island.y + island.height / 2);
+      const radius = Math.max(island.width, island.height) * cam.zoom * 1.2;
+      const grad = ctx.createRadialGradient(center.sx, center.sy, 0, center.sx, center.sy, radius);
+      const alpha = (1 - revealEase) * 0.65;
+      grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(center.sx - radius, center.sy - radius, radius * 2, radius * 2);
     }
   }
 }

@@ -5,9 +5,16 @@ import { timeEnv, zoomToFit, type SortMode, type TimeMode } from '@pangaea/core'
 import { useTabletStore } from '../../state/tabletStore';
 import { useLandStore } from '../../state/landStore';
 import { useUiStore } from '../../state/uiStore';
+import { useToastStore } from '../../state/toastStore';
 import { OceanCanvas } from '../ocean/OceanCanvas';
 import { buildScene, isoBounds } from './continentLayout';
-import { drawScene, hitTest, labelPosition, type Camera } from './continentDraw';
+import {
+  drawScene,
+  hitTest,
+  labelPosition,
+  type Camera,
+  type RevealState,
+} from './continentDraw';
 import { DetailPanel } from './DetailPanel';
 import { NewTabletFab } from './NewTabletFab';
 import { Dropdown } from '../components/Dropdown';
@@ -41,6 +48,7 @@ export function ContinentView() {
   const [camera, setCamera] = useState<Camera>({ zoom: 1, panX: 0, panY: 0 });
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [hourTick, setHourTick] = useState(0);
+  const [reveal, setReveal] = useState<RevealState | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -91,6 +99,30 @@ export function ContinentView() {
     }
   }, [fit, scene.blocks.length]);
 
+  // 첫 섬 솟아오르기 연출 (M1-E3, 0.8초 + 안개 걷힘)
+  useEffect(() => {
+    const landId = useUiStore.getState().pendingRevealLandId;
+    if (!landId) return;
+    useUiStore.getState().setPendingReveal(null);
+    let raf = 0;
+    const start = performance.now();
+    const DURATION = 800;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / DURATION);
+      setReveal({ landId, t });
+      if (t < 1) {
+        raf = requestAnimationFrame(tick);
+      } else {
+        setReveal(null);
+        const show = useToastStore.getState().show;
+        show('첫 번째 땅이 솟아올랐습니다 🏝', 'success', 3000);
+        setTimeout(() => show('🗿 더 기록하면 대륙이 자랍니다', 'info', 3500), 1500);
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
   // 캔버스 리사이즈 + 다시 그리기
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -109,13 +141,13 @@ export function ContinentView() {
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
-      drawScene(ctx, scene, cameraRef.current, { hour, selectedId, hoveredId });
+      drawScene(ctx, scene, cameraRef.current, { hour, selectedId, hoveredId, reveal });
     };
     draw();
     const observer = new ResizeObserver(draw);
     observer.observe(container);
     return () => observer.disconnect();
-  }, [scene, camera, hour, selectedId, hoveredId]);
+  }, [scene, camera, hour, selectedId, hoveredId, reveal]);
 
   // 휠 줌 (커서 기준, passive:false 필요)
   useEffect(() => {

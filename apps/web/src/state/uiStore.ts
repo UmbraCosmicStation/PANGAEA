@@ -27,6 +27,10 @@ interface UiState {
   /** 판게아(공간) 이름 — 온보딩에서 설정 */
   spaceName: string;
   setSpaceName: (name: string) => Promise<void>;
+
+  /** 첫 저장 직후 섬 솟아오르기 연출 대상 토지 (휘발성) */
+  pendingRevealLandId: string | null;
+  setPendingReveal: (landId: string | null) => void;
 }
 
 export const useUiStore = create<UiState>((set, get) => ({
@@ -63,4 +67,7 @@ export const useUiStore = create<UiState>((set, get) => ({
     set({ spaceName: name });
     await getStorage().writeJson('space_name', name);
   },
+
+  pendingRevealLandId: null,
+  setPendingReveal: (landId) => set({ pendingRevealLandId: landId }),
 }));
