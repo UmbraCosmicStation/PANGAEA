@@ -23,6 +23,10 @@ interface UiState {
   // 온보딩
   onboarded: boolean;
   setOnboarded: (v: boolean) => Promise<void>;
+
+  /** 판게아(공간) 이름 — 온보딩에서 설정 */
+  spaceName: string;
+  setSpaceName: (name: string) => Promise<void>;
 }
 
 export const useUiStore = create<UiState>((set, get) => ({
@@ -39,7 +43,8 @@ export const useUiStore = create<UiState>((set, get) => ({
     const storage = getStorage();
     const saved = await storage.readJson<Partial<AppSettings>>('settings');
     const onboarded = (await storage.readJson<boolean>('onboarded')) ?? false;
-    set({ settings: { ...DEFAULT_SETTINGS, ...saved }, onboarded });
+    const spaceName = (await storage.readJson<string>('space_name')) ?? '';
+    set({ settings: { ...DEFAULT_SETTINGS, ...saved }, onboarded, spaceName });
   },
   updateSettings: async (patch) => {
     const settings = { ...get().settings, ...patch };
@@ -51,5 +56,11 @@ export const useUiStore = create<UiState>((set, get) => ({
   setOnboarded: async (v) => {
     set({ onboarded: v });
     await getStorage().writeJson('onboarded', v);
+  },
+
+  spaceName: '',
+  setSpaceName: async (name) => {
+    set({ spaceName: name });
+    await getStorage().writeJson('space_name', name);
   },
 }));

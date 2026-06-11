@@ -4,6 +4,9 @@ import { AppLayout } from './AppLayout';
 import { PlaceholderScreen } from '../ui/screens/PlaceholderScreen';
 import { EditorScreen } from '../ui/editor/EditorScreen';
 import { ContinentView } from '../ui/continent/ContinentView';
+import { TabletListView } from '../ui/tablets/TabletListView';
+import { DockView } from '../ui/dock/DockView';
+import { ProfileView } from '../ui/profile/ProfileView';
 import { useLandStore } from '../state/landStore';
 import { useTabletStore } from '../state/tabletStore';
 import { useUiStore } from '../state/uiStore';
@@ -14,10 +17,10 @@ const router = createHashRouter([
     element: <AppLayout />,
     children: [
       { path: '/', element: <ContinentView /> },
-      { path: '/tablets', element: <PlaceholderScreen title="판" hint="Step 5" /> },
-      { path: '/dock', element: <PlaceholderScreen title="부두" hint="Step 5" /> },
+      { path: '/tablets', element: <TabletListView /> },
+      { path: '/dock', element: <DockView /> },
       { path: '/moai', element: <PlaceholderScreen title="모아이" hint="M2에서 깨어납니다 🗿" /> },
-      { path: '/profile', element: <PlaceholderScreen title="프로필" hint="Step 5" /> },
+      { path: '/profile', element: <ProfileView /> },
     ],
   },
   // 에디터는 풀스크린 — 탭 바 없는 별도 레이아웃
