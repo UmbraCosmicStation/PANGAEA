@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createHashRouter, RouterProvider } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
 import { PlaceholderScreen } from '../ui/screens/PlaceholderScreen';
+import { EditorScreen } from '../ui/editor/EditorScreen';
 import { useLandStore } from '../state/landStore';
 import { useTabletStore } from '../state/tabletStore';
 import { useUiStore } from '../state/uiStore';
@@ -18,6 +19,8 @@ const router = createHashRouter([
       { path: '/profile', element: <PlaceholderScreen title="프로필" hint="Step 5" /> },
     ],
   },
+  // 에디터는 풀스크린 — 탭 바 없는 별도 레이아웃
+  { path: '/edit/:id', element: <EditorScreen /> },
 ]);
 
 export function App() {

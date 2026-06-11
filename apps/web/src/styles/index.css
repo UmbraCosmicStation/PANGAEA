@@ -106,6 +106,101 @@ body {
     inset 0 1px 0 var(--glass-highlight);
 }
 
+/* ── 에디터 읽기 모드 타이포 ─────────────────────────────── */
+.prose-pangaea {
+  color: var(--text-1);
+  line-height: 1.75;
+  font-size: 16px;
+}
+.prose-pangaea h1,
+.prose-pangaea h2,
+.prose-pangaea h3 {
+  font-family: var(--font-serif-kr);
+  font-weight: 700;
+  margin: 1.2em 0 0.5em;
+}
+.prose-pangaea h1 {
+  font-size: 1.6em;
+}
+.prose-pangaea h2 {
+  font-size: 1.35em;
+}
+.prose-pangaea h3 {
+  font-size: 1.15em;
+}
+.prose-pangaea p {
+  margin: 0.6em 0;
+}
+.prose-pangaea ul,
+.prose-pangaea ol {
+  padding-left: 1.4em;
+  margin: 0.6em 0;
+}
+.prose-pangaea ul {
+  list-style: disc;
+}
+.prose-pangaea ol {
+  list-style: decimal;
+}
+.prose-pangaea blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.9em;
+  color: var(--text-2);
+  margin: 0.8em 0;
+}
+.prose-pangaea code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+.prose-pangaea pre {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 0.9em 1em;
+  overflow-x: auto;
+  margin: 0.8em 0;
+}
+.prose-pangaea pre code {
+  background: none;
+  padding: 0;
+}
+.prose-pangaea table {
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  width: 100%;
+}
+.prose-pangaea th,
+.prose-pangaea td {
+  border: 1px solid var(--glass-border);
+  padding: 0.4em 0.7em;
+  text-align: left;
+}
+.prose-pangaea th {
+  background: rgba(255, 255, 255, 0.06);
+}
+.prose-pangaea hr {
+  border: none;
+  border-top: 1px solid var(--glass-border);
+  margin: 1.4em 0;
+}
+.prose-pangaea img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+.prose-pangaea a,
+.prose-pangaea .internal-link {
+  color: var(--info);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.prose-pangaea input[type='checkbox'] {
+  accent-color: var(--accent);
+  margin-right: 0.4em;
+}
+
 /* ── 모션 (기획서 DS.7) ─────────────────────────────────── */
 .spring {
   transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
