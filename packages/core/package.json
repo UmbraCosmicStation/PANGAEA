@@ -1,0 +1,22 @@
+{
+  "name": "@pangaea/core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "ulid": "^3.0.2",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.8"
+  }
+}
