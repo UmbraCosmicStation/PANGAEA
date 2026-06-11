@@ -1,7 +1,47 @@
+import { useEffect, useState } from 'react';
+import { createHashRouter, RouterProvider } from 'react-router-dom';
+import { AppLayout } from './AppLayout';
+import { PlaceholderScreen } from '../ui/screens/PlaceholderScreen';
+import { useLandStore } from '../state/landStore';
+import { useTabletStore } from '../state/tabletStore';
+import { useUiStore } from '../state/uiStore';
+
+// 레벨 B 자가 설치(GitHub Pages) 호환을 위해 hash 라우터 사용
+const router = createHashRouter([
+  {
+    element: <AppLayout />,
+    children: [
+      { path: '/', element: <PlaceholderScreen title="대륙" hint="Step 4에서 바다가 열립니다" /> },
+      { path: '/tablets', element: <PlaceholderScreen title="판" hint="Step 5" /> },
+      { path: '/dock', element: <PlaceholderScreen title="부두" hint="Step 5" /> },
+      { path: '/moai', element: <PlaceholderScreen title="모아이" hint="M2에서 깨어납니다 🗿" /> },
+      { path: '/profile', element: <PlaceholderScreen title="프로필" hint="Step 5" /> },
+    ],
+  },
+]);
+
 export function App() {
-  return (
-    <div className="flex h-dvh items-center justify-center bg-gradient-to-b from-[#5BA3D9] to-[#0F4A6E]">
-      <h1 className="font-serif text-4xl tracking-[0.3em] text-white/95">PANGAEA</h1>
-    </div>
-  );
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      await useUiStore.getState().loadSettings();
+      await useLandStore.getState().loadAll();
+      await useLandStore.getState().ensureDock();
+      await useTabletStore.getState().loadAll();
+      setReady(true);
+    })();
+  }, []);
+
+  if (!ready) {
+    return (
+      <div className="flex h-dvh items-center justify-center">
+        <h1 className="font-display animate-pulse text-3xl tracking-[0.35em] text-text-1">
+          PANGAEA
+        </h1>
+      </div>
+    );
+  }
+
+  return <RouterProvider router={router} />;
 }
