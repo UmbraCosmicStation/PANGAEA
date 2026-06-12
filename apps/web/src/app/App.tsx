@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { createHashRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
 import { PlaceholderScreen } from '../ui/screens/PlaceholderScreen';
-import { EditorScreen } from '../ui/editor/EditorScreen';
 import { ContinentView } from '../ui/continent/ContinentView';
 import { TabletListView } from '../ui/tablets/TabletListView';
 import { DockView } from '../ui/dock/DockView';
@@ -11,6 +10,25 @@ import { Onboarding } from '../ui/onboarding/Onboarding';
 import { useLandStore } from '../state/landStore';
 import { useTabletStore } from '../state/tabletStore';
 import { useUiStore } from '../state/uiStore';
+
+// 에디터(CodeMirror+marked)는 무거우므로 지연 로드 — 초기 번들 축소
+const EditorScreen = lazy(() =>
+  import('../ui/editor/EditorScreen').then((m) => ({ default: m.EditorScreen })),
+);
+
+function EditorRoute() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-dvh items-center justify-center text-sm text-text-2">
+          판을 펼치는 중...
+        </div>
+      }
+    >
+      <EditorScreen />
+    </Suspense>
+  );
+}
 
 /** 첫 방문이면 온보딩으로 (기획서 §3.4 — 2회차 이후 바로 대륙 뷰) */
 function HomeGate() {
@@ -31,7 +49,7 @@ const router = createHashRouter([
     ],
   },
   // 풀스크린 라우트 — 탭 바 없음
-  { path: '/edit/:id', element: <EditorScreen /> },
+  { path: '/edit/:id', element: <EditorRoute /> },
   { path: '/welcome', element: <Onboarding /> },
 ]);
 
