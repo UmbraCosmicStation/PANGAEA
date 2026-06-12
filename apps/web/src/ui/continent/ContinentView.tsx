@@ -1,7 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Minus, Plus, Scan, Search, SunMoon, X } from 'lucide-react';
-import { timeEnv, zoomToFit, type SortMode, type TimeMode } from '@pangaea/core';
+import {
+  ALTITUDES,
+  blockTotem,
+  BRIDGE_TOTEMS,
+  deriveBridges,
+  DOCK_LAND_ID,
+  HEALTH_TOTEMS,
+  landBridgeDensity,
+  landHealth,
+  limitBridgesPerLand,
+  monolithSummary,
+  timeEnv,
+  zoomToFit,
+  type SortMode,
+  type Tablet,
+  type TimeMode,
+} from '@pangaea/core';
 import { useTabletStore } from '../../state/tabletStore';
 import { useLandStore } from '../../state/landStore';
 import { useUiStore } from '../../state/uiStore';
@@ -29,6 +45,12 @@ const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
   { value: 'type', label: '유형별' },
 ];
 
+function cnAltitude(active: boolean): string {
+  return `glass spring rounded-full px-2.5 py-1 text-[11px] transition-colors ${
+    active ? 'border-accent/60 text-accent' : 'text-text-2 hover:text-text-1'
+  }`;
+}
+
 function currentHour(mode: TimeMode): number {
   if (mode === 'day') return 13;
   if (mode === 'night') return 22;
@@ -50,6 +72,7 @@ export function ContinentView() {
   const [camera, setCamera] = useState<Camera>({ zoom: 1, panX: 0, panY: 0 });
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [hourTick, setHourTick] = useState(0);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [reveal, setReveal] = useState<RevealState | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,7 +90,10 @@ export function ContinentView() {
 
   // 1분마다 시간 갱신 (시스템 연동 시 조명이 흐른다)
   useEffect(() => {
-    const t = setInterval(() => setHourTick((v) => v + 1), 60_000);
+    const t = setInterval(() => {
+      setHourTick((v) => v + 1);
+      setNowMs(Date.now());
+    }, 60_000);
     return () => clearInterval(t);
   }, []);
 
@@ -84,6 +110,68 @@ export function ContinentView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lands, tablets, settings.sortMode, activityLog]);
 
+  const altitude = settings.altitude;
+
+  // 판 위 토템 (M2-B3) — 룬 고도에서만
+  const totems = useMemo(() => {
+    if (!settings.showTotems) return null;
+    const map = new Map<string, string>();
+    for (const t of tablets.values()) {
+      const symbol = blockTotem(t, altitude);
+      if (symbol) map.set(t.id, symbol);
+    }
+    return map.size > 0 ? map : null;
+  }, [tablets, altitude, settings.showTotems]);
+
+  const allBridges = useMemo(() => deriveBridges([...tablets.values()]), [tablets]);
+
+  // 다리 선 — 항로 고도에서만 표시 (M2-B5)
+  const bridgeLines = useMemo(() => {
+    if (altitude !== 'bridges') return null;
+    const centers = new Map(
+      scene.islands.map((i) => [i.landId, { x: i.x + i.width / 2, y: i.y + i.height / 2 }]),
+    );
+    return limitBridgesPerLand(allBridges).flatMap((b) => {
+      const a = centers.get(b.sourceLandId);
+      const c = centers.get(b.targetLandId);
+      return a && c
+        ? [{ x1: a.x, y1: a.y, x2: c.x, y2: c.y, strength: b.strength, bidirectional: b.bidirectional }]
+        : [];
+    });
+  }, [altitude, allBridges, scene.islands]);
+
+  // 모노리스 + 대표 토템 (M2-B4) — 기후/항로 고도는 토지 단위 심볼
+  const monoliths = useMemo(() => {
+    if (!settings.showMonoliths) return null;
+    const byLand = new Map<string, Tablet[]>();
+    for (const t of tablets.values()) {
+      const list = byLand.get(t.landId) ?? [];
+      list.push(t);
+      byLand.set(t.landId, list);
+    }
+    const map = new Map<string, string | null>();
+    for (const island of scene.islands) {
+      const landTablets = byLand.get(island.landId) ?? [];
+      if (altitude === 'health') {
+        map.set(
+          island.landId,
+          HEALTH_TOTEMS[
+            landHealth({
+              tablets: landTablets,
+              isDock: island.landId === DOCK_LAND_ID,
+              now: nowMs,
+            })
+          ],
+        );
+      } else if (altitude === 'bridges') {
+        map.set(island.landId, BRIDGE_TOTEMS[landBridgeDensity(island.landId, allBridges)]);
+      } else {
+        map.set(island.landId, monolithSummary(landTablets, altitude).primary);
+      }
+    }
+    return map;
+  }, [scene.islands, tablets, altitude, settings.showMonoliths, allBridges, nowMs]);
+
   const fit = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -92,14 +180,14 @@ export function ContinentView() {
     setCamera({ zoom: Math.max(0.35, Math.min(zoom, 4)), panX, panY });
   }, [scene.bounds]);
 
-  // 첫 진입 시 줌 핏
+  // 첫 진입 시 줌 핏 — 섬이 실제로 생긴 뒤에 1회
   const fittedRef = useRef(false);
   useEffect(() => {
-    if (!fittedRef.current && scene.blocks.length >= 0) {
+    if (!fittedRef.current && scene.islands.length > 0) {
       fit();
       fittedRef.current = true;
     }
-  }, [fit, scene.blocks.length]);
+  }, [fit, scene.islands.length]);
 
   // 첫 섬 솟아오르기 연출 (M1-E3, 0.8초 + 안개 걷힘)
   useEffect(() => {
@@ -149,13 +237,16 @@ export function ContinentView() {
         hoveredId,
         reveal,
         highlightIds,
+        totems,
+        monoliths,
+        bridges: bridgeLines,
       });
     };
     draw();
     const observer = new ResizeObserver(draw);
     observer.observe(container);
     return () => observer.disconnect();
-  }, [scene, camera, hour, selectedId, hoveredId, reveal, highlightIds]);
+  }, [scene, camera, hour, selectedId, hoveredId, reveal, highlightIds, totems, monoliths, bridgeLines]);
 
   // 휠 줌 (커서 기준, passive:false 필요)
   useEffect(() => {
@@ -266,6 +357,11 @@ export function ContinentView() {
       if ((e.ctrlKey || e.metaKey) && e.key === '0') {
         e.preventDefault();
         fit();
+      } else if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '5') {
+        // 고도 전환 (기획서 §4.9.6 — Cmd+1~5)
+        e.preventDefault();
+        const target = ALTITUDES[Number(e.key) - 1];
+        if (target) void useUiStore.getState().updateSettings({ altitude: target.key });
       } else if (e.key === 'Escape') {
         select(null);
       }
@@ -361,6 +457,20 @@ export function ContinentView() {
         </button>
         <span className="font-mono text-[10px] text-text-2">{Math.round(camera.zoom * 100)}%</span>
       </Glass>
+
+      {/* 고도 탭 (M2-B2) — 봉화/지형/깃발/항로/기후 */}
+      <div className="absolute left-3 top-14 z-20 flex gap-1">
+        {ALTITUDES.map((a) => (
+          <button
+            key={a.key}
+            className={cnAltitude(altitude === a.key)}
+            title={a.hint}
+            onClick={() => void useUiStore.getState().updateSettings({ altitude: a.key })}
+          >
+            {a.name}
+          </button>
+        ))}
+      </div>
 
       {/* 검색 하이라이트 해제 칩 (M2-A4) */}
       {highlightIds && (

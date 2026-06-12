@@ -31,6 +31,8 @@ export interface SceneBlock {
   activity: number;
   /** 깊이 정렬 키 */
   depth: number;
+  /** 교차 정착 흔적(Trace) 블록 — opacity 0.45 + 점선 (기획서 §7) */
+  isTrace?: boolean;
 }
 
 export interface SceneIsland {
@@ -69,12 +71,29 @@ export function buildScene(
     byLand.set(t.landId, list);
   }
 
+  // 흔적(Trace): xset이 가리키는 토지에 유령 블록 — 토지당 최대 3개, 활성도 높은 순 (기획서 §7)
+  const tracesByLand = new Map<string, Tablet[]>();
+  for (const t of tablets) {
+    for (const x of t.xset) {
+      if (x.landId === t.landId) continue;
+      const list = tracesByLand.get(x.landId) ?? [];
+      list.push(t);
+      tracesByLand.set(x.landId, list);
+    }
+  }
+  for (const [landId, list] of tracesByLand) {
+    list.sort((a, b) => (activityOf(b.id) ?? 0) - (activityOf(a.id) ?? 0));
+    tracesByLand.set(landId, list.slice(0, 3));
+  }
+
   // 판 0개인 토지도 섬으로 표시 (빈 섬), 부두는 비어 있으면 숨김
+  // 섬 면적은 흔적 블록 자리까지 포함해 계산
   const inputs = lands
     .filter((l) => l.type !== 'dock' || (byLand.get(l.id)?.length ?? 0) > 0)
     .map((l) => ({
       landId: l.id,
-      tabletCount: byLand.get(l.id)?.length ?? 0,
+      tabletCount:
+        (byLand.get(l.id)?.length ?? 0) + (tracesByLand.get(l.id)?.length ?? 0),
       pinned: l.pinned,
       isDock: l.id === DOCK_LAND_ID,
     }));
@@ -119,6 +138,23 @@ export function buildScene(
         depth: x + y, // 아이소 깊이: sy = (x+y)/2 에 비례
       });
     }
+
+    // 흔적 블록 — 섬 하단 가장자리에 배치 (원본과 동일 높이/색, 점선 렌더는 draw에서)
+    const traces = tracesByLand.get(p.landId) ?? [];
+    traces.forEach((origin, i) => {
+      const x = p.x + ISLAND_PADDING + i * CELL;
+      const y = p.y + ISLAND_PADDING + grid.rows * CELL;
+      blocks.push({
+        tabletId: origin.id,
+        landId: p.landId,
+        x,
+        y,
+        h: blockHeight(tabletSizeBytes(origin)),
+        activity: activityMap.get(origin.id) ?? 0,
+        depth: x + y,
+        isTrace: true,
+      });
+    });
   }
 
   blocks.sort((a, b) => a.depth - b.depth);

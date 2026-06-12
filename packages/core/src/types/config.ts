@@ -10,6 +10,8 @@ export type TimeMode = 'system' | 'day' | 'night';
 /** 대륙 정렬 모드 (기획서 §4.7) */
 export type SortMode = 'mountain' | 'activity' | 'recent' | 'status' | 'type';
 
+import type { Altitude } from '../domain/totem/altitude';
+
 /** 대륙 테마 프리셋 (기획서 DS.2) */
 export type OceanTheme = 'blue' | 'deep' | 'coral' | 'obsidian' | 'sunset';
 
@@ -18,6 +20,8 @@ export interface AppSettings {
   oceanQuality: OceanQuality;
   timeMode: TimeMode;
   sortMode: SortMode;
+  /** 고도 — 토템 레이어 모드 (기본: 봉화) */
+  altitude: Altitude;
   theme: OceanTheme;
   accentColor: string; // HEX
   showTotems: boolean;
@@ -33,6 +37,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   oceanQuality: 'mid',
   timeMode: 'system',
   sortMode: 'mountain',
+  altitude: 'status',
   theme: 'blue',
   accentColor: '#F0C95C',
   showTotems: true,

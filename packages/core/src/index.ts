@@ -21,6 +21,10 @@ export * from './domain/land/sort';
 export * from './domain/land/layout';
 export * from './domain/land/bridge';
 
+// domain — totem
+export * from './domain/totem/altitude';
+export * from './domain/totem/monolith';
+
 // domain — render
 export * from './domain/render/color';
 export * from './domain/render/isometric';

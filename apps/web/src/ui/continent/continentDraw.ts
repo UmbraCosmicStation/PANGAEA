@@ -46,6 +46,16 @@ export interface RevealState {
   t: number;
 }
 
+/** 다리 선 — 끝점은 탑다운 월드 좌표 (섬 중심) */
+export interface BridgeLine {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  strength: number;
+  bidirectional: boolean;
+}
+
 function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);
 }
@@ -61,6 +71,12 @@ export function drawScene(
     reveal?: RevealState | null;
     /** 검색 하이라이트 — 셋에 없는 블록은 디밍 (M2-A4) */
     highlightIds?: ReadonlySet<string> | null;
+    /** 판 ID → 토템 심볼 (현재 고도 기준, M2-B3) */
+    totems?: ReadonlyMap<string, string> | null;
+    /** 토지 ID → 대표 토템 심볼 (null = 무늬 없는 모노리스, M2-B4) */
+    monoliths?: ReadonlyMap<string, string | null> | null;
+    /** 토지 간 다리 (항로 고도, M2-B5) */
+    bridges?: ReadonlyArray<BridgeLine> | null;
   },
 ): void {
   const env = timeEnv(opts.hour);
@@ -87,13 +103,42 @@ export function drawScene(
     ctx.fill();
   }
 
+  // 다리 (항로 고도) — 섬 아래, 블록 위에 깔리지 않게 먼저 (M2-B5)
+  if (opts.bridges) {
+    for (const br of opts.bridges) {
+      const p1 = toScreen(cam, br.x1, br.y1);
+      const p2 = toScreen(cam, br.x2, br.y2);
+      const cx = (p1.sx + p2.sx) / 2;
+      const cy = Math.min(p1.sy, p2.sy) - (28 + br.strength * 18) * cam.zoom;
+      ctx.beginPath();
+      ctx.moveTo(p1.sx, p1.sy);
+      ctx.quadraticCurveTo(cx, cy, p2.sx, p2.sy);
+      if (br.strength < 0.2) {
+        ctx.setLineDash([3, 4]);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      } else if (br.strength < 0.5) {
+        ctx.setLineDash([5, 4]);
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      } else {
+        ctx.setLineDash([]);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
   // 블록 (depth 순 정렬 가정 — 화가 알고리즘)
   for (const b of scene.blocks) {
     // 섬 등장 연출 (M1-E3): 해당 토지 블록이 바다에서 솟아오름
     const revealing = opts.reveal && b.landId === opts.reveal.landId;
     // 검색 디밍: 매치 블록만 밝게, 나머지 opacity 30% (기획서 §4.9.5)
     const dimmed = opts.highlightIds != null && !opts.highlightIds.has(b.tabletId);
-    const alpha = (revealing ? revealEase : 1) * (dimmed ? 0.3 : 1);
+    // 흔적 블록은 opacity 0.45 (기획서 §7)
+    const alpha = (revealing ? revealEase : 1) * (dimmed ? 0.3 : 1) * (b.isTrace ? 0.45 : 1);
     if (alpha < 1) ctx.globalAlpha = alpha;
     const heightScale = revealing ? revealEase : 1;
 
@@ -158,6 +203,15 @@ export function drawScene(
       : rgbToCss(top);
     ctx.fill();
 
+    // 흔적: 점선 테두리 (기획서 §7)
+    if (b.isTrace) {
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     // 선택 발광 (금색, M1-C5)
     if (opts.selectedId === b.tabletId) {
       ctx.save();
@@ -170,6 +224,54 @@ export function drawScene(
     }
 
     if (alpha < 1) ctx.globalAlpha = 1;
+  }
+
+  // 토템 패스 (M2-B3) — 블록 위에 심볼. 줌 1.0x+ 에서만 (기획서 §4.10 LOD)
+  if (opts.totems && cam.zoom >= 1.0) {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.font = `${Math.min(18, Math.max(8, 8 * cam.zoom))}px sans-serif`;
+    for (const b of scene.blocks) {
+      if (b.isTrace) continue; // 흔적에는 토템 미표시 (기획서 §7)
+      const symbol = opts.totems.get(b.tabletId);
+      if (!symbol) continue;
+      const dimmed = opts.highlightIds != null && !opts.highlightIds.has(b.tabletId);
+      if (dimmed) continue;
+      const face = topFace(cam, b, b.h);
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur = 2;
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.fillText(symbol, face[0].x, face[0].y - 2 * cam.zoom);
+      ctx.restore();
+    }
+  }
+
+  // 모노리스 패스 (M2-B4) — 섬 중심의 석조물 + 대표 토템
+  if (opts.monoliths) {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    for (const island of scene.islands) {
+      if (!opts.monoliths.has(island.landId)) continue;
+      const symbol = opts.monoliths.get(island.landId) ?? null;
+      const c = toScreen(cam, island.x + island.width / 2, island.y + island.height / 2);
+      const w = 5 * cam.zoom;
+      const h = 24 * cam.zoom;
+      // 오벨리스크 (몸체 + 밝은 상단)
+      ctx.fillStyle = `rgba(70,80,95,${0.55 + env.illuminance * 0.3})`;
+      ctx.fillRect(c.sx - w / 2, c.sy - h, w, h);
+      ctx.fillStyle = `rgba(150,160,175,${0.6 + env.illuminance * 0.3})`;
+      ctx.fillRect(c.sx - w / 2, c.sy - h, w, 3 * cam.zoom);
+      if (symbol) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 2;
+        ctx.font = `${Math.min(20, Math.max(10, 11 * cam.zoom))}px sans-serif`;
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.fillText(symbol, c.sx, c.sy - h - 2 * cam.zoom);
+        ctx.restore();
+      }
+    }
   }
 
   // 안개 걷힘 (M1-E3): 등장 중인 섬 위에 흰 안개가 옅어진다
