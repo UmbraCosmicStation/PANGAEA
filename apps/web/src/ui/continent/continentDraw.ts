@@ -59,6 +59,8 @@ export function drawScene(
     selectedId: string | null;
     hoveredId: string | null;
     reveal?: RevealState | null;
+    /** 검색 하이라이트 — 셋에 없는 블록은 디밍 (M2-A4) */
+    highlightIds?: ReadonlySet<string> | null;
   },
 ): void {
   const env = timeEnv(opts.hour);
@@ -89,7 +91,10 @@ export function drawScene(
   for (const b of scene.blocks) {
     // 섬 등장 연출 (M1-E3): 해당 토지 블록이 바다에서 솟아오름
     const revealing = opts.reveal && b.landId === opts.reveal.landId;
-    if (revealing) ctx.globalAlpha = revealEase;
+    // 검색 디밍: 매치 블록만 밝게, 나머지 opacity 30% (기획서 §4.9.5)
+    const dimmed = opts.highlightIds != null && !opts.highlightIds.has(b.tabletId);
+    const alpha = (revealing ? revealEase : 1) * (dimmed ? 0.3 : 1);
+    if (alpha < 1) ctx.globalAlpha = alpha;
     const heightScale = revealing ? revealEase : 1;
 
     const top = activityColor(b.activity, env.nightness);
@@ -164,7 +169,7 @@ export function drawScene(
       ctx.restore();
     }
 
-    if (revealing) ctx.globalAlpha = 1;
+    if (alpha < 1) ctx.globalAlpha = 1;
   }
 
   // 안개 걷힘 (M1-E3): 등장 중인 섬 위에 흰 안개가 옅어진다

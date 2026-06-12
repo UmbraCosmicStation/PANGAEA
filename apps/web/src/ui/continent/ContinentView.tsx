@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Minus, Plus, Scan, SunMoon } from 'lucide-react';
+import { Minus, Plus, Scan, Search, SunMoon, X } from 'lucide-react';
 import { timeEnv, zoomToFit, type SortMode, type TimeMode } from '@pangaea/core';
 import { useTabletStore } from '../../state/tabletStore';
 import { useLandStore } from '../../state/landStore';
 import { useUiStore } from '../../state/uiStore';
 import { useToastStore } from '../../state/toastStore';
+import { useSearchStore } from '../../state/searchStore';
 import { OceanCanvas } from '../ocean/OceanCanvas';
 import { buildScene, isoBounds } from './continentLayout';
 import {
@@ -44,6 +45,7 @@ export function ContinentView() {
   const settings = useUiStore((s) => s.settings);
   const selectedId = useUiStore((s) => s.selectedTabletId);
   const select = useUiStore((s) => s.select);
+  const highlightIds = useSearchStore((s) => s.highlightIds);
 
   const [camera, setCamera] = useState<Camera>({ zoom: 1, panX: 0, panY: 0 });
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -141,13 +143,19 @@ export function ContinentView() {
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
-      drawScene(ctx, scene, cameraRef.current, { hour, selectedId, hoveredId, reveal });
+      drawScene(ctx, scene, cameraRef.current, {
+        hour,
+        selectedId,
+        hoveredId,
+        reveal,
+        highlightIds,
+      });
     };
     draw();
     const observer = new ResizeObserver(draw);
     observer.observe(container);
     return () => observer.disconnect();
-  }, [scene, camera, hour, selectedId, hoveredId, reveal]);
+  }, [scene, camera, hour, selectedId, hoveredId, reveal, highlightIds]);
 
   // 휠 줌 (커서 기준, passive:false 필요)
   useEffect(() => {
@@ -319,6 +327,13 @@ export function ContinentView() {
           PANGAEA
         </span>
         <div className="flex-1" />
+        <button
+          className="glass spring rounded-lg p-1.5 text-text-2 transition-colors hover:text-text-1"
+          onClick={() => useSearchStore.getState().setOpen(true)}
+          title="검색 (Ctrl+K)"
+        >
+          <Search size={16} />
+        </button>
         <Dropdown
           value={settings.sortMode}
           options={SORT_OPTIONS}
@@ -346,6 +361,16 @@ export function ContinentView() {
         </button>
         <span className="font-mono text-[10px] text-text-2">{Math.round(camera.zoom * 100)}%</span>
       </Glass>
+
+      {/* 검색 하이라이트 해제 칩 (M2-A4) */}
+      {highlightIds && (
+        <button
+          className="glass absolute left-1/2 top-14 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-accent"
+          onClick={() => useSearchStore.getState().clearHighlight()}
+        >
+          검색 결과 {highlightIds.size}개 표시 중 <X size={13} />
+        </button>
+      )}
 
       {/* 범례 */}
       <Glass className="absolute bottom-16 left-3 z-20 hidden items-center gap-2 rounded-lg px-3 py-1.5 sm:flex lg:bottom-3">

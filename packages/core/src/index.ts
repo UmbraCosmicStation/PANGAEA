@@ -5,6 +5,7 @@ export * from './types/config';
 
 // interfaces
 export * from './interfaces/IStorage';
+export * from './interfaces/ISearchEngine';
 export * from './interfaces/IOceanRenderer';
 export * from './interfaces/IAuthProvider';
 export * from './interfaces/ISkill';
@@ -13,6 +14,7 @@ export * from './interfaces/ISkill';
 export * from './domain/tablet/frontmatter';
 export * from './domain/tablet/activity';
 export * from './domain/tablet/create';
+export * from './domain/tablet/search';
 
 // domain — land
 export * from './domain/land/sort';
