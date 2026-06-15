@@ -9,6 +9,7 @@ export * from './interfaces/ISearchEngine';
 export * from './interfaces/IOceanRenderer';
 export * from './interfaces/IAuthProvider';
 export * from './interfaces/ISkill';
+export * from './interfaces/ILLMClient';
 
 // domain — tablet
 export * from './domain/tablet/frontmatter';
@@ -24,6 +25,13 @@ export * from './domain/land/bridge';
 // domain — totem
 export * from './domain/totem/altitude';
 export * from './domain/totem/monolith';
+
+// domain — moai
+export * from './domain/moai/router';
+export * from './domain/moai/skills';
+
+// domain — economy
+export * from './domain/economy/ink';
 
 // domain — render
 export * from './domain/render/color';

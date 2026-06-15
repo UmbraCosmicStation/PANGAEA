@@ -13,6 +13,7 @@ import { createMarkdownEditor, insertAtCursor } from './cmExtensions';
 import { renderMarkdown } from './markdown';
 import { MetaPanel } from './MetaPanel';
 import { FloatingToolbar } from './FloatingToolbar';
+import { InlineMoai } from './InlineMoai';
 import { Button } from '../components/Button';
 import { cn } from '../lib/cn';
 
@@ -198,6 +199,7 @@ export function EditorScreen() {
           }}
         />
         <span className="hidden text-xs text-text-3 sm:inline">{landName}</span>
+        <InlineMoai view={view} tabletId={id} body={() => bodyRef.current} />
         <Button
           size="sm"
           onClick={() => setMode((m) => (m === 'source' ? 'read' : 'source'))}

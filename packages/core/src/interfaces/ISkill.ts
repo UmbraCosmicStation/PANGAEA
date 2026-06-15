@@ -9,14 +9,26 @@ export interface SkillInput {
   tabletIds?: TabletId[];
   landId?: LandId;
   prompt?: string;
+  /** 대상 판 본문 — 호출자가 주입 (스킬은 저장소에 직접 접근하지 않음) */
+  content?: string;
 }
+
+/** 승인 시 적용할 구조화 제안 (기획서 §10.4 — diff 미리보기 + 승인) */
+export type SkillProposal =
+  | { kind: 'replace_body'; body: string }
+  | { kind: 'insert_text'; text: string }
+  | { kind: 'set_runes'; status?: string; type?: string; priority?: string }
+  | { kind: 'assign_land'; landId: LandId }
+  | { kind: 'none' };
 
 export interface SkillOutput {
   /** 사용자 승인 전 미리보기 (diff 필수 원칙) */
   preview: string;
-  /** 승인 시 적용할 구조화 제안 */
-  proposal?: unknown;
+  proposal: SkillProposal;
   inkSpent: number;
+  /** 어떤 스킬이 실행됐는지 표시용 */
+  skillId: string;
+  skillName: string;
 }
 
 export interface ISkill {

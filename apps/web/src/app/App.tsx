@@ -1,15 +1,16 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { createHashRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
-import { PlaceholderScreen } from '../ui/screens/PlaceholderScreen';
 import { ContinentView } from '../ui/continent/ContinentView';
 import { TabletListView } from '../ui/tablets/TabletListView';
 import { DockView } from '../ui/dock/DockView';
 import { ProfileView } from '../ui/profile/ProfileView';
+import { MoaiTab } from '../ui/moai/MoaiTab';
 import { Onboarding } from '../ui/onboarding/Onboarding';
 import { useLandStore } from '../state/landStore';
 import { useTabletStore } from '../state/tabletStore';
 import { useUiStore } from '../state/uiStore';
+import { useMoaiStore } from '../state/moaiStore';
 
 // 에디터(CodeMirror+marked)는 무거우므로 지연 로드 — 초기 번들 축소
 const EditorScreen = lazy(() =>
@@ -44,7 +45,7 @@ const router = createHashRouter([
       { path: '/', element: <HomeGate /> },
       { path: '/tablets', element: <TabletListView /> },
       { path: '/dock', element: <DockView /> },
-      { path: '/moai', element: <PlaceholderScreen title="모아이" hint="M2에서 깨어납니다 🗿" /> },
+      { path: '/moai', element: <MoaiTab /> },
       { path: '/profile', element: <ProfileView /> },
     ],
   },
@@ -62,6 +63,7 @@ export function App() {
       await useLandStore.getState().loadAll();
       await useLandStore.getState().ensureDock();
       await useTabletStore.getState().loadAll();
+      await useMoaiStore.getState().load();
       setReady(true);
     })();
   }, []);
