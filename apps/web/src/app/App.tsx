@@ -11,6 +11,7 @@ import { useLandStore } from '../state/landStore';
 import { useTabletStore } from '../state/tabletStore';
 import { useUiStore } from '../state/uiStore';
 import { useMoaiStore } from '../state/moaiStore';
+import { useSealStore } from '../state/sealStore';
 
 // 에디터(CodeMirror+marked)는 무거우므로 지연 로드 — 초기 번들 축소
 const EditorScreen = lazy(() =>
@@ -64,6 +65,7 @@ export function App() {
       await useLandStore.getState().ensureDock();
       await useTabletStore.getState().loadAll();
       await useMoaiStore.getState().load();
+      await useSealStore.getState().load();
       setReady(true);
     })();
   }, []);

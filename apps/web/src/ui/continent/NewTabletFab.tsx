@@ -4,6 +4,8 @@ import { Plus } from 'lucide-react';
 import { DOCK_LAND_ID } from '@pangaea/core';
 import { useLandStore } from '../../state/landStore';
 import { useTabletStore } from '../../state/tabletStore';
+import { useSealStore } from '../../state/sealStore';
+import { useToastStore } from '../../state/toastStore';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { Dropdown } from '../components/Dropdown';
@@ -21,6 +23,14 @@ export function NewTabletFab() {
     .map((l) => ({ value: l.id, label: l.name }));
 
   const createAndEdit = async () => {
+    // 인장 소모 (기획서 §11.3 — 새 판 생성 = 1 인장)
+    const ok = await useSealStore.getState().tryConsume();
+    if (!ok) {
+      useToastStore
+        .getState()
+        .show('인장이 부족합니다. 매주 월요일 +5개 충전됩니다.', 'error', 4000);
+      return;
+    }
     const tablet = await useTabletStore.getState().create({
       title: title.trim() || '제목 없음',
       landId,

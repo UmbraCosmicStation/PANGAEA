@@ -7,6 +7,7 @@ import {
   type LandId,
 } from '@pangaea/core';
 import { getStorage } from '../data/storage';
+import { useUiStore } from './uiStore';
 
 /** 토지(Land) 스토어 (M1-A2c) */
 
@@ -57,6 +58,8 @@ export const useLandStore = create<LandState>((set, get) => ({
     const land = createLand({ name });
     await getStorage().writeLand(land);
     set((s) => ({ lands: new Map(s.lands).set(land.id, land) }));
+    // 새 토지 등장 = 안개 걷힘 연출 (M2-D6, 기획서 §11.3)
+    useUiStore.getState().setPendingReveal(land.id);
     return land;
   },
 

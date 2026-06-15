@@ -4,6 +4,7 @@ import { PRESET_LANDS } from '@pangaea/core';
 import { useLandStore } from '../../state/landStore';
 import { useTabletStore } from '../../state/tabletStore';
 import { useUiStore } from '../../state/uiStore';
+import { useSealStore } from '../../state/sealStore';
 import { OceanCanvas } from '../ocean/OceanCanvas';
 import { Glass } from '../components/Glass';
 import { Button } from '../components/Button';
@@ -41,6 +42,7 @@ export function Onboarding() {
     }
     // 첫 판 자동 생성 → 에디터 (저장 시 섬 등장 연출)
     const firstLand = presetIds[0]!;
+    await useSealStore.getState().tryConsume(); // 첫 판도 인장 1 소모
     const tablet = await useTabletStore.getState().create({
       title: '첫 번째 기록',
       landId: firstLand,

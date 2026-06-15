@@ -32,6 +32,7 @@ export * from './domain/moai/skills';
 
 // domain — economy
 export * from './domain/economy/ink';
+export * from './domain/economy/seal';
 
 // domain — render
 export * from './domain/render/color';
