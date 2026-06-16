@@ -1,9 +1,13 @@
+import process from 'node:process';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig({
+// GitHub Pages는 https://<user>.github.io/PANGAEA/ 하위 경로로 서빙 → build 시 base 지정.
+// dev/preview는 루트(/)로 동작. CI에서 PAGES_BASE로 덮어쓸 수 있음.
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? (process.env.PAGES_BASE ?? '/PANGAEA/') : '/',
   plugins: [
     react(),
     tailwindcss(),
@@ -48,4 +52,4 @@ export default defineConfig({
   server: {
     port: 5174,
   },
-});
+}));
